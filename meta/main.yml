@@ -36,7 +36,7 @@ dependencies:
                     password: "{{ davical_db_password }}",
                     privileges: ALL,
                     type: database }
-		]
+                ]
               }
             ]
        }
