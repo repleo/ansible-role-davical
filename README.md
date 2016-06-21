@@ -14,6 +14,7 @@ This role requires Ansible 2.0 or higher and platform requirements are listed in
 Role Variables
 --------------
 
+```yaml
    # General config.
    davical_hostname: cal.example.com
    davical_admin_email: root@example.com
@@ -28,6 +29,7 @@ Role Variables
    davical_db_name: davical
    davical_db_password: davical
    davical_db_host: localhost
+```
 
 Dependencies
 ------------
