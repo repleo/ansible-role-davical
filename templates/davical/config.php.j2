@@ -1,0 +1,7 @@
+<?php
+  $c->domain_name  = '{{ davical_hostname }}';
+  $c->sysabbr     = 'davical';
+  $c->system_name = 'Repleo CalDAV Server';
+
+  $c->admin_email  = '{{ davical_admin_email }}';
+  $c->pg_connect[] = 'dbname={{ davical_db_name }} user=davical_app password={{ davical_db_password }} host={{ davical_db_host }}';

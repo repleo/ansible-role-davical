@@ -1,0 +1,84 @@
+---
+# tasks file for ansible-role-davical/
+
+- name: Install base packages
+  action: apt pkg={{item}} state=present
+  with_items:
+  - davical
+
+- name: Copy configuration for davical
+  template: src=davical/config.php.j2 dest=/etc/davical/config.php mode=0640 group=www-data
+  notify:
+   - restart davical
+
+- name: Copy configuration for updata-database davical
+  template: src=davical/administration.yml.j2 dest=/etc/davical/administration.yml mode=0640 group=postgres
+
+- name: Check if davical database is installed
+  become: yes
+  become_method: sudo
+  become_user: postgres
+  command: bash -c "psql -d davical -c 'select * from usr;'"
+  ignore_errors: yes
+  register: davical_db_exists
+
+- name: Add pg_hba access rules
+  lineinfile: dest=/etc/postgresql/9.4/main/pg_hba.conf regexp="local davical davical_dba trust" insertbefore="\# PostgreSQL Client" line="local davical davical_dba trust" state=present
+  when: davical_db_exists.rc != 0
+
+- name: Add pg_hba access rules
+  lineinfile: dest=/etc/postgresql/9.4/main/pg_hba.conf regexp="local davical davical_app trust" insertbefore="\# PostgreSQL Client" line="local davical davical_app trust" state=present
+  when: davical_db_exists.rc != 0
+
+- name: Restart postgres
+  service: name=postgresql state=restarted
+  when: davical_db_exists.rc != 0
+
+- name: Remove the old davical database
+  become: yes
+  become_method: sudo
+  become_user: postgres
+  command: bash -c "dropdb davical"
+  ignore_errors: yes
+  when: davical_db_exists.rc != 0
+
+- name: Create new davical database
+  become: yes
+  become_method: sudo
+  become_user: postgres
+  command: bash -c "/usr/share/davical/dba/create-database.sh"
+  when: davical_db_exists.rc != 0
+  register: createdatabase
+
+- name: See output log for admin password
+  debug: msg="{{ createdatabase.stdout }}"
+  when: davical_db_exists.rc != 0
+
+- name: Remove pg_hba access rules
+  lineinfile: dest=/etc/postgresql/9.4/main/pg_hba.conf regexp="local davical davical_dba trust" state=absent
+  when: davical_db_exists.rc != 0
+
+- name: Remove pg_hba access rules
+  lineinfile: dest=/etc/postgresql/9.4/main/pg_hba.conf regexp="local davical davical_dba trust" state=absent
+  when: davical_db_exists.rc != 0
+
+- name: Remove pg_hba access rules
+  lineinfile: dest=/etc/postgresql/9.4/main/pg_hba.conf regexp="local davical davical_app trust" state=absent
+  when: davical_db_exists.rc != 0
+
+- name: Restart postgres
+  service: name=postgresql state=restarted
+  when: davical_db_exists.rc != 0
+
+
+- name: Create the nginx configuration for davical
+  template: src=nginx/davical.j2 dest=/etc/nginx/sites-available/{{davical_hostname}}
+  notify:
+   - reload nginx
+
+
+- name: Create the links to enable davical configuration
+  file: path=/etc/nginx/sites-enabled/{{davical_hostname}} state=link src=/etc/nginx/sites-available/{{davical_hostname}}
+  notify:
+   - reload nginx
+

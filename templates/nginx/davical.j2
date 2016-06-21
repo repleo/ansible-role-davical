@@ -1,0 +1,63 @@
+{% if davical_ssl and davical_redirect_http_to_https %}
+server {
+  listen *:80;
+  listen [::]:80;
+  server_name {{davical_hostname}};
+  return 301 https://$host$request_uri;
+}
+{% endif %}
+
+server {
+{% if davical_ssl %}
+    listen *:443 ssl;
+    listen [::]:443 ssl;
+    ssl_certificate {{ davical_ssl_certificate }};
+    ssl_certificate_key {{ davical_ssl_certificate_key }};
+{% else %}
+    listen *:80;
+    listen [::]:80;
+{% endif %}
+    server_name {{davical_hostname}};
+
+    access_log  /var/log/nginx/{{davical_hostname}}.access.log;
+    error_log  /var/log/nginx/{{davical_hostname}}.error.log;
+
+    root   /usr/share/davical/htdocs;
+    index  index.php;
+
+{% if davical_ssl %}
+    location / {
+        rewrite ^/principals/users/(.+)$    https://{{davical_hostname}}/caldav.php/$1 break;
+        rewrite /.well-known/(.+)$          https://{{davical_hostname}}/caldav.php/.well-known/$1 break;
+    }
+{% else %}
+    location / {
+        rewrite ^/principals/users/(.+)$    http://{{davical_hostname}}/caldav.php/$1 break;
+        rewrite /.well-known/(.+)$          http://{{davical_hostname}}/caldav.php/.well-known/$1 break;
+    }
+{% endif %}
+
+    location ~ ^(.+\.php)(.*)$ {
+        include                     fastcgi_params;
+        fastcgi_param               SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_pass                unix:/var/run/php5-fpm.sock;
+        fastcgi_split_path_info     ^(.+\.php)(.*)$;
+        fastcgi_param               PATH_INFO $fastcgi_path_info;
+        fastcgi_param               PATH_TRANSLATED $document_root$fastcgi_path_info;
+        fastcgi_read_timeout        180;
+        fastcgi_buffer_size         128k;
+        fastcgi_buffers             4 256k;
+    }
+
+    location ~ .php$ {
+        try_files                   $uri =404;
+        include                     fastcgi_params;
+        fastcgi_pass                unix:/var/run/php5-fpm.sock;
+        fastcgi_index               index.php;
+        fastcgi_split_path_info     ^(.+\.php)(.*)$;
+        fastcgi_param               SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+        fastcgi_param               PATH_INFO $fastcgi_path_info;
+        fastcgi_param               PATH_TRANSLATED $document_root$fastcgi_path_info;
+    }
+}
+

@@ -1,0 +1,17 @@
+---
+# defaults file for ansible-role-davical/
+
+# General config.
+davical_hostname: cal
+davical_admin_email: root
+
+# SSL Configuration.
+davical_ssl: no
+#davical_redirect_http_to_https: yes
+#davical_ssl_certificate: "/etc/nginx/ssl/davical.crt"
+#davical_ssl_certificate_key: "/etc/nginx/ssl/davical.key"
+
+# Database config.
+davical_db_name: davical
+davical_db_password: davical
+davical_db_host: localhost
